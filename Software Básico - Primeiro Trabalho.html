@@ -1,0 +1,408 @@
+
+<!-- saved from url=(0063)http://www.inf.puc-rio.br/~inf1018/corrente/trabs/t1/trab1.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+  <title>Software Básico - Primeiro Trabalho</title>
+
+<link media="screen,projection,handheld" href="./Software Básico - Primeiro Trabalho_files/style.css" type="text/css" rel="stylesheet">
+<style>
+.wrap {
+   margin: 3em;
+}
+body {
+   background: white;
+}
+</style>
+<style type="text/css"></style></head>
+<body>
+<div class="wrap">
+<h1>INF1018 - Software Básico (2016.1)<br>
+Primeiro Trabalho</h1>
+
+
+<h2>Armazenamento de estruturas de inteiros</h2>
+<p>
+O objetivo do trabalho é implementar, na linguagem C, duas funções:
+<b><code>code</code></b> e <b><code>decode</code></b>.
+A função <b><code>code</code></b> escreve, em um arquivo binário,
+o conteúdo de estruturas de dados que contém campos inteiros de 32 
+e 64 bits, codificado conforme o formato fornecido adiante.
+A função <b><code>decode</code></b> 
+permite visualizar o conteúdo de estruturas armazenadas em um 
+arquivo gerado por <b><code>code</code></b>.
+</p><hr>
+<font color="blue">
+Leia com atenção o enunciado do trabalho e as instruções para a entrega.
+Em caso de dúvidas, não invente. Pergunte!
+</font>
+<hr>
+<p>
+</p><h3>Função <code>code</code></h3>
+<b>
+<small>
+</small><pre><small>int code (char* desc, void* v, FILE* f); 
+</small></pre>
+</b>
+
+A função <b><code>code</code></b> recebe como  argumentos: 
+<ul>
+<li> <code>desc</code>: uma descrição dos campos da struct a ser armazenada
+</li><li> <code>v</code>: um ponteiro para a struct
+</li><li> <code>f</code>: um arquivo aberto para escrita, em modo binário
+</li></ul>
+
+A função deverá retornar 0 em caso de sucesso, e -1 em caso de erro.
+Apenas erros de E/S (ou seja, erros na gravação do arquivo) devem ser considerados. Assuma que todos os parâmetros fornecidos à função estão corretos
+(isto é, a estrutura está corretamente especificada por 
+<code><b>desc</b></code>, <code><b>v</b></code> contém o endereço da estrutura
+e <code><b>f</b></code> contém o descritor de um arquivo aberto, com sucesso,
+pela função que chamou <code><b>code</b></code>).
+<p>
+A função <code>code</code> <b>não deve fechar o arquivo de saída</b>.
+Como várias estruturas poderão ser armazenadas em um mesmo arquivo
+(i.e, poderá haver várias chamadas para <code>code</code>),
+apenas a função que abriu o arquivo (provavelmente, a <code>main</code>)
+deve fechar o arquivo.
+
+</p><p>
+A string <b><code>desc</code></b> representa, na ordem, o tipo de cada campo 
+da struct, de acordo com o código a seguir:
+<small></small></p><pre><small>    'i' - int (inteiro com sinal, 32 bits)
+    'l' - long (inteiro com sinal, 64 bits)
+</small></pre>
+
+<p>
+Como exemplo, dada a declaração:
+<small></small></p><pre><small>  struct t {
+    int i1;
+    int i2;
+    long l1;
+    long l2;
+  };
+  struct t teste;
+</small></pre>
+a string <code>desc</code> correspondente é <b><code>"iill"</code></b>.
+<p>
+Assumindo que o descritor do arquivo de saída está armazenado em uma variável
+<code><b>arq</b></code>, do tipo <code><b>FILE*</b></code>, a chamada
+para a gravação do conteúdo da estrutura <code><b>teste</b></code> 
+neste arquivo seria:
+<b>
+<small></small></b></p><pre><b><small>   res = code("iill", &amp;teste, arq);
+</small></b></pre><b>
+</b>
+<b>Atenção!</b> Para acessar os valores dos campos da estrutura armazenados
+na memória, a função <code>code</code> deve levar em consideração
+as <b>regras de alinhamento</b> especificadas para o ambiente onde ela
+será executada (SO Linux, em uma máquina de 64 bits)
+<p>
+</p><hr>
+<p>
+</p><h3>Formato do arquivo gerado</h3>
+Para cada estrutura, devem ser armazenadas, em sequência, as
+seguintes informações:
+<ul>
+<li>o primeiro byte armazenado é uma "marca" de início de estrutura;
+este byte deve ter todos os bits setados (em hexa, FF).
+</li><li>a seguir deverão vir, codificados, os campos da estrutura. 
+<p>
+Cada campo da estrutura deve ser codificado como um par 
+<b><em>chave-valor</em></b>.
+A <b><em>chave</em></b> de um campo deve ser codificada em um byte, conforme
+mostrado a seguir:
+</p><p>
+<table border="1">
+<tbody><tr>
+<th><small>BITS:</small></th>
+<th><small>7</small></th>
+<th><small>6-2</small></th>
+<th><small>1-0</small></th>
+</tr>
+<tr>
+<td></td>
+<td><small>&nbsp;<b>cont</b>&nbsp;</small></td>
+<td><small>&nbsp;00000&nbsp;</small></td>
+<td><small>&nbsp;<b>tipo</b>&nbsp;</small></td>
+</tr>
+</tbody></table>
+</p><p>
+
+O bit mais significativo (<b>cont</b>) indica se este é o último campo da
+estrutura (0) ou não (1).
+Os bits 6 a 2 deverão, obrigatoriamente, conter 0.
+Os bits 1-0 (<b>tipo</b>) codificam o tipo do campo,
+da seguinte forma:
+</p><ul>
+<li>01 - inteiro de 32 bits 
+</li><li>10 - inteiro de 64 bits 
+</li></ul>
+<p>
+O elemento <b><em>valor</em></b> é a codificação do valor do campo,
+que é feita em dois passos:
+</p><ul>
+<li>
+No primeiro passo, usamos o método <b>ZigZag</b>
+para mapear o valor do campo (um inteiro com sinal,
+representado em complemento a 2) para um valor sem sinal.
+Com esse método, quanto menor o <b>valor absoluto</b> de um número,
+menor é o inteiro sem sinal para o qual ele é mapeado.
+O nome <b>ZigZag</b> decorre do fato do método "zigzag-ar" valores positivos
+e negativos, de forma que -1 seja codificado como 1, 1 como 2, -2 como 3, e
+assim sucessivamente.
+Para fazer esse <em>zigzag</em>, valores positivos <b>n</b> são mapeados
+para <b>2*n</b> e valores negativos para o complemento bit-a-bit
+de <b>2*n</b>.
+<p>
+<b>DICA</b>: A codificação em <em>zigzag</em> de um inteiro com
+sinal <b>n</b> para um inteiro sem sinal <b>z</b> pode ser feita da seguinte forma:
+<small>
+</small></p><pre><small>  z = n &lt;&lt; 1;
+  if (n &lt; 0)
+    z = ~z;
+</small></pre><small>
+</small>
+<p>
+</p></li><li>No segundo passo, codificamos o valor obtido após o <em>zigzag</em> 
+como um <em><b>varint</b></em>. Esss codificação usa um número variável
+de bytes, de forma que quanto menor o valor a ser codificado, 
+menor o número de bytes utilizado.
+<p>
+Para fazer a codificação, o valor original é dividido em
+grupos de 7 bits, começando com os bits menos significativos.
+Cada um desses grupos gera um byte a ser gravado no arquivo;
+o bit mais significativo de cada byte gerado indica se ele é o último
+byte do valor (0) ou se há mais bytes em seguida (1).
+</p><p>
+Vejamos um exemplo, a codificação do inteiro sem sinal 300 como
+um <em>varint</em>.
+Em binário, temos:
+<small>
+</small></p><pre><small><b>0000 0000000 0000000 0000010 0101100</b>
+</small></pre><small>
+</small>
+<p>
+Pegamos o primeiro grupo de 7 bits (os menos significativos),
+e indicamos que haverá mais bytes a seguir:
+<small>
+</small></p><pre><small><b> 10101100</b>
+</small></pre><small>
+</small>
+Este é o primeiro byte a ser gravado no arquivo.
+Pegamos agora o próximo grupo. Como os demais grupos contém
+apenas zeros, este será o último byte do valor codificado:
+<small>
+<pre><b> 00000010</b>
+</pre>
+</small>
+</li></ul>
+</li></ul>
+<p>Vejamos agora um exemplo de codificação completa.
+Suponha a seguinte estrutura:
+<small>
+</small></p><pre><small>struct t {
+  int i1;
+  int i2;
+  long l1;
+  long l2;
+} teste = {1, -1, 256, -256};
+</small></pre><small>
+</small>
+O conteúdo codificado dessa estrutura, começando com a marca
+de início, é
+<small>
+<pre>ff 81 02 81 01 82 80 04 02 ff 03
+</pre>
+</small>
+<br>
+<hr>
+<h3>Função <code>decode</code></h3>
+<b><small><pre>int decode (FILE *f); 
+</pre></small>
+</b>
+
+<p>
+A função <code><b>decode</b></code> permite a visualização, na saída padrão,
+do conteúdo de um arquivo binário com o formato descrito anteriormente
+(isto é, um arquivo gerado por chamadas a <code>code</code>).
+Essa saída pode ser gerada, por exemplo, através de chamadas
+a <code>printf</code>.
+</p><p>
+O único argumento de <code>decode</code> é o descritor de
+um arquivo aberto para leitura,
+em modo binário.
+</p><p>A função deverá retornar 0 em caso de sucesso,
+e -1 em caso de erro. Apenas erros de E/S (i.e, erros na leitura do arquivo),
+deverão ser detetados. A função <code>decode</code> 
+pode assumir que o conteúdo do arquivo foi gerado corretamente.
+</p><p>
+A função <code>decode</code> não deve fechar o arquivo. Isso deverá
+ser feito pela função que abriu o arquivo (provavelmente, a <code>main</code>).
+</p><p>
+</p><p>A saída da função <code>decode</code>, para cada estrutura armazenada,
+deve ser a seguinte
+
+</p><ul>
+<li> uma linha separadora
+</li><li> uma linha indicando a posição da estrutura no arquivo
+(1 para primeira, 2 para
+segunda, etc...)
+</li><li> uma linha para cada campo da estrutura, indicando o tipo do campo
+e seu valor, decodificado
+</li></ul>
+
+Como exemplo, para um arquivo que armazene a estrutura <b>teste</b>,
+descrita anteriormente, a saída de <code>decode</code> deveria ser:
+
+<small><pre>---------------------------
+Estrutura 1
+&lt;int&gt; 1
+&lt;int&gt; -1
+&lt;long&gt; 256
+&lt;long&gt; -256
+</pre></small>
+<p>
+</p><p>
+<b>DICA</b>: Para obter o valor de inteiro com sinal <b>n</b> mapeado
+pela codificação em <em>zigzag</em> para um
+um inteiro sem sinal <b>z</b> você pode fazer:
+<small>
+</small></p><pre><small>  n = z &gt;&gt;  1;
+  if (z &amp; 0x01) /* negativos sempre mapeados para impares! */
+    n = ~n;
+</small></pre><small>
+</small>
+<br>
+<hr>
+<h2>Implementação e Execução</h2>
+<p>
+Você deve criar um arquivo fonte chamado 
+<font color="blue">
+<b><code>code.c</code></b>
+</font>
+contendo as duas funções descritas acima (<code>code e decode</code>)
+e funções auxiliares, se for o caso.
+Esse arquivo <font color="blue"> <b>não</b> </font>
+deve conter uma função <code>main</code>!
+</p><p>Crie também um arquivo 
+<font color="blue">
+<code><b>code.h</b></code> </font>,
+que deve conter 
+<font color="blue">apenas os protótipos
+</font>
+das funções <code>code</code> e <code>decode</code>.
+</p><p>
+Para testar seu programa, crie um outro arquivo,
+por exemplo,
+<font color="blue">
+<code><b>teste.c</b></code>
+</font>
+, contendo a função <code>main</code>.
+</p><p>Note que é responsabilidade da função <code>main</code> abrir o arquivo 
+a ser gravado (por <code>code</code>) ou lido (por <code>decode</code>).
+O descritor do arquivo aberto será passado, como parâmetro, para essas
+funções.
+</p><p>
+Crie seu programa executável, <code>teste</code>, com a linha:
+<small>
+</small></p><pre><small>gcc -Wall -o teste code.c teste.c
+</small></pre><small>
+</small>
+
+<p> Tanto o arquivo <code><b>code.c</b></code> como 
+<code><b>teste.c</b></code> devem conter a linha:
+<small>
+</small></p><pre><small>#include "code.h"
+</small></pre><small>
+</small>
+
+<br>
+<hr>
+<h2>Dicas</h2>
+<p>Implemente seu trabalho por partes, testando cada parte implementada
+antes de prosseguir.
+</p><p>Por exemplo, você pode implementar primeiro a codificação
+de estruturas e gravação do arquivo.
+Comece implementando casos simples (estruturas com apenas um campo,
+estruturas sem paddings),
+e vá introduzindo mais tipos de campos e valores à medida
+que os casos anteriores estejam funcionando. 
+</p><p>
+Para verificar o conteúdo do arquivo gravado, você pode usar o utilitário
+<b><code>hexdump</code></b>. Por exemplo, o comando
+<small></small></p><pre><small>hexdump -C &lt;nome-do-arquivo&gt;
+</small></pre>
+exibe o conteúdo do arquivo especificado byte a byte, em hexadecimal
+(16 bytes por linha). A segunda coluna de cada linha (entre '|') exibe
+os caracteres ASCII correspondentes a esses bytes, se eles existirem.
+<p>Para abrir um arquivo para gravação ou leitura em formato binário,
+use a função
+<small></small></p><pre><small>FILE *fopen(char *path, char *mode);
+</small></pre>
+descrita em <code>stdio.h</code>. Seus argumentos são:
+<ul>
+<li> <code>path</code>: nome do arquivo a ser aberto
+</li><li> <code>mode</code>: uma string que, no nosso caso, será <b>"rb"</b>
+para abrir o arquivo para leitura em modo binário ou <b>"wb"</b>
+para abrir o arquivo para escrita em modo binário.
+</li></ul>
+A letra 'b', que indica o modo binário, é ignorada em sistemas como Linux,
+que tratam da mesma forma arquivos de tipos texto e binário.
+Mas ela é necessária em outros sistemas, 
+como Windows,
+que tratam de forma diferente arquivos de tipos texto e binário
+(interpretando/modificando, por exemplo, bytes de arquivos "texto"
+que correspondem a caracteres de controle).
+<p>Para fazer a leitura e gravação do arquivo, uma sugestão é
+pesquisar as funções <code>fwrite</code>/<code>fread</code> e
+<code>fputc</code>/<code>fgetc</code>.
+
+<br><br>
+</p><hr>
+<h2>Entrega</h2>
+<p>
+Devem ser entregues <b>via Moodle</b> dois arquivos:
+</p><ol>
+<li> o arquivo fonte <font color="blue"><b>code.c</b></font>
+<p> Coloque no início do arquivo fonte, como comentário, os nomes dos integrantes
+do grupo, da seguinte forma:
+</p><pre>  /* Nome_do_Aluno1 Matricula Turma */
+  /* Nome_do_Aluno2 Matricula Turma */
+</pre>
+Lembre-se que este arquivo não deve conter a função <code>main</code>!
+</li><li><p> um arquivo texto, chamado <font color="blue"><b>relatorio.txt</b></font>,
+descrevendo os testes realizados,
+o que está funcionando e, eventualmente, o que não está funcionando.
+Mostre exemplos de estruturas testadas (casos de sucesso e insucesso,
+se houver)!
+</p><p>
+Você não deve explicar a sua implementação neste relatório. Seu programa
+deve ser suficientemente claro e bem comentado.
+</p><p>Coloque também no relatório o nome dos integrantes do grupo.
+</p></li></ol>
+<b>Coloque na área de texto da tarefa do Moodle
+os nomes e turmas dos integrantes do grupo.</b>
+<p>
+Para grupos de alunos da mesma turma, apenas uma entrega é necessária (usando o <em>login</em> de um dos
+integrantes do grupo).
+</p><hr>
+<h2>Prazo</h2>
+<ul>
+<li>O trabalho deve ser entregue <font color="blue"><b>até a meia-noite
+do dia 18/04</b></font>.
+</li><li>Trabalhos entregues com atraso perderão
+<font color="blue"><b>um ponto por dia de atraso</b></font>.
+</li></ul>
+<p>
+</p><hr>
+<h2>Observações</h2>
+<ul>
+ <li>Os trabalhos devem preferencialmente ser feitos 
+<b><font color="blue">em grupos de dois alunos</font></b>.
+</li>
+<li>Alguns grupos poderão ser chamados para apresentações orais / demonstrações
+dos trabalhos entregues.
+</li>
+
+
+
+
+</ul></div></body></html>
