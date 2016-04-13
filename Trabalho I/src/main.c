@@ -3,8 +3,8 @@
 #include "code.h"
 
 struct AP{
-	//int a;
-	//int b;
+	int a;
+	int b;
 	long c;
 	int a;
 	long d;
