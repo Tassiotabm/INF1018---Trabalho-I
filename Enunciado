@@ -1,0 +1,165 @@
+INF1018 - Software Básico (2016.1)
+Primeiro Trabalho
+
+Armazenamento de estruturas de inteiros
+O objetivo do trabalho é implementar, na linguagem C, duas funções: code e decode. A função code escreve, em um arquivo binário, o conteúdo de estruturas de dados que contém campos inteiros de 32 e 64 bits, codificado conforme o formato fornecido adiante. A função decode permite visualizar o conteúdo de estruturas armazenadas em um arquivo gerado por code.
+
+Leia com atenção o enunciado do trabalho e as instruções para a entrega. Em caso de dúvidas, não invente. Pergunte!
+Função code
+
+ int code (char* desc, void* v, FILE* f); 
+A função code recebe como argumentos:
+desc: uma descrição dos campos da struct a ser armazenada
+v: um ponteiro para a struct
+f: um arquivo aberto para escrita, em modo binário
+A função deverá retornar 0 em caso de sucesso, e -1 em caso de erro. Apenas erros de E/S (ou seja, erros na gravação do arquivo) devem ser considerados. Assuma que todos os parâmetros fornecidos à função estão corretos (isto é, a estrutura está corretamente especificada por desc, v contém o endereço da estrutura e f contém o descritor de um arquivo aberto, com sucesso, pela função que chamou code).
+A função code não deve fechar o arquivo de saída. Como várias estruturas poderão ser armazenadas em um mesmo arquivo (i.e, poderá haver várias chamadas para code), apenas a função que abriu o arquivo (provavelmente, a main) deve fechar o arquivo.
+
+A string desc representa, na ordem, o tipo de cada campo da struct, de acordo com o código a seguir:
+
+    'i' - int (inteiro com sinal, 32 bits)
+    'l' - long (inteiro com sinal, 64 bits)
+Como exemplo, dada a declaração:
+
+  struct t {
+    int i1;
+    int i2;
+    long l1;
+    long l2;
+  };
+  struct t teste;
+a string desc correspondente é "iill".
+Assumindo que o descritor do arquivo de saída está armazenado em uma variável arq, do tipo FILE*, a chamada para a gravação do conteúdo da estrutura teste neste arquivo seria:
+
+   res = code("iill", &teste, arq);
+Atenção! Para acessar os valores dos campos da estrutura armazenados na memória, a função code deve levar em consideração as regras de alinhamento especificadas para o ambiente onde ela será executada (SO Linux, em uma máquina de 64 bits)
+Formato do arquivo gerado
+
+Para cada estrutura, devem ser armazenadas, em sequência, as seguintes informações:
+o primeiro byte armazenado é uma "marca" de início de estrutura; este byte deve ter todos os bits setados (em hexa, FF).
+a seguir deverão vir, codificados, os campos da estrutura.
+Cada campo da estrutura deve ser codificado como um par chave-valor. A chave de um campo deve ser codificada em um byte, conforme mostrado a seguir:
+
+BITS:	7	6-2	1-0
+ cont 	 00000 	 tipo 
+O bit mais significativo (cont) indica se este é o último campo da estrutura (0) ou não (1). Os bits 6 a 2 deverão, obrigatoriamente, conter 0. Os bits 1-0 (tipo) codificam o tipo do campo, da seguinte forma:
+
+01 - inteiro de 32 bits
+10 - inteiro de 64 bits
+O elemento valor é a codificação do valor do campo, que é feita em dois passos:
+
+No primeiro passo, usamos o método ZigZag para mapear o valor do campo (um inteiro com sinal, representado em complemento a 2) para um valor sem sinal. Com esse método, quanto menor o valor absoluto de um número, menor é o inteiro sem sinal para o qual ele é mapeado. O nome ZigZag decorre do fato do método "zigzag-ar" valores positivos e negativos, de forma que -1 seja codificado como 1, 1 como 2, -2 como 3, e assim sucessivamente. Para fazer esse zigzag, valores positivos n são mapeados para 2*n e valores negativos para o complemento bit-a-bit de 2*n.
+DICA: A codificação em zigzag de um inteiro com sinal n para um inteiro sem sinal z pode ser feita da seguinte forma:
+
+  z = n << 1;
+  if (n < 0)
+    z = ~z;
+No segundo passo, codificamos o valor obtido após o zigzag como um varint. Esss codificação usa um número variável de bytes, de forma que quanto menor o valor a ser codificado, menor o número de bytes utilizado.
+Para fazer a codificação, o valor original é dividido em grupos de 7 bits, começando com os bits menos significativos. Cada um desses grupos gera um byte a ser gravado no arquivo; o bit mais significativo de cada byte gerado indica se ele é o último byte do valor (0) ou se há mais bytes em seguida (1).
+
+Vejamos um exemplo, a codificação do inteiro sem sinal 300 como um varint. Em binário, temos:
+
+0000 0000000 0000000 0000010 0101100
+Pegamos o primeiro grupo de 7 bits (os menos significativos), e indicamos que haverá mais bytes a seguir:
+
+ 10101100
+Este é o primeiro byte a ser gravado no arquivo. Pegamos agora o próximo grupo. Como os demais grupos contém apenas zeros, este será o último byte do valor codificado:
+ 00000010
+Vejamos agora um exemplo de codificação completa. Suponha a seguinte estrutura:
+
+struct t {
+  int i1;
+  int i2;
+  long l1;
+  long l2;
+} teste = {1, -1, 256, -256};
+O conteúdo codificado dessa estrutura, começando com a marca de início, é
+ff 81 02 81 01 82 80 04 02 ff 03
+
+Função decode
+
+int decode (FILE *f); 
+A função decode permite a visualização, na saída padrão, do conteúdo de um arquivo binário com o formato descrito anteriormente (isto é, um arquivo gerado por chamadas a code). Essa saída pode ser gerada, por exemplo, através de chamadas a printf.
+
+O único argumento de decode é o descritor de um arquivo aberto para leitura, em modo binário.
+
+A função deverá retornar 0 em caso de sucesso, e -1 em caso de erro. Apenas erros de E/S (i.e, erros na leitura do arquivo), deverão ser detetados. A função decode pode assumir que o conteúdo do arquivo foi gerado corretamente.
+
+A função decode não deve fechar o arquivo. Isso deverá ser feito pela função que abriu o arquivo (provavelmente, a main).
+
+A saída da função decode, para cada estrutura armazenada, deve ser a seguinte
+
+uma linha separadora
+uma linha indicando a posição da estrutura no arquivo (1 para primeira, 2 para segunda, etc...)
+uma linha para cada campo da estrutura, indicando o tipo do campo e seu valor, decodificado
+Como exemplo, para um arquivo que armazene a estrutura teste, descrita anteriormente, a saída de decode deveria ser:
+---------------------------
+Estrutura 1
+<int> 1
+<int> -1
+<long> 256
+<long> -256
+DICA: Para obter o valor de inteiro com sinal n mapeado pela codificação em zigzag para um um inteiro sem sinal z você pode fazer:
+
+  n = z >>  1;
+  if (z & 0x01) /* negativos sempre mapeados para impares! */
+    n = ~n;
+
+Implementação e Execução
+Você deve criar um arquivo fonte chamado code.c contendo as duas funções descritas acima (code e decode) e funções auxiliares, se for o caso. Esse arquivo não deve conter uma função main!
+
+Crie também um arquivo code.h , que deve conter apenas os protótipos das funções code e decode.
+
+Para testar seu programa, crie um outro arquivo, por exemplo, teste.c , contendo a função main.
+
+Note que é responsabilidade da função main abrir o arquivo a ser gravado (por code) ou lido (por decode). O descritor do arquivo aberto será passado, como parâmetro, para essas funções.
+
+Crie seu programa executável, teste, com a linha:
+
+gcc -Wall -o teste code.c teste.c
+Tanto o arquivo code.c como teste.c devem conter a linha:
+
+#include "code.h"
+
+Dicas
+Implemente seu trabalho por partes, testando cada parte implementada antes de prosseguir.
+
+Por exemplo, você pode implementar primeiro a codificação de estruturas e gravação do arquivo. Comece implementando casos simples (estruturas com apenas um campo, estruturas sem paddings), e vá introduzindo mais tipos de campos e valores à medida que os casos anteriores estejam funcionando.
+
+Para verificar o conteúdo do arquivo gravado, você pode usar o utilitário hexdump. Por exemplo, o comando
+
+hexdump -C <nome-do-arquivo>
+exibe o conteúdo do arquivo especificado byte a byte, em hexadecimal (16 bytes por linha). A segunda coluna de cada linha (entre '|') exibe os caracteres ASCII correspondentes a esses bytes, se eles existirem.
+Para abrir um arquivo para gravação ou leitura em formato binário, use a função
+
+FILE *fopen(char *path, char *mode);
+descrita em stdio.h. Seus argumentos são:
+path: nome do arquivo a ser aberto
+mode: uma string que, no nosso caso, será "rb" para abrir o arquivo para leitura em modo binário ou "wb" para abrir o arquivo para escrita em modo binário.
+A letra 'b', que indica o modo binário, é ignorada em sistemas como Linux, que tratam da mesma forma arquivos de tipos texto e binário. Mas ela é necessária em outros sistemas, como Windows, que tratam de forma diferente arquivos de tipos texto e binário (interpretando/modificando, por exemplo, bytes de arquivos "texto" que correspondem a caracteres de controle).
+Para fazer a leitura e gravação do arquivo, uma sugestão é pesquisar as funções fwrite/fread e fputc/fgetc. 
+
+Entrega
+Devem ser entregues via Moodle dois arquivos:
+
+o arquivo fonte code.c
+Coloque no início do arquivo fonte, como comentário, os nomes dos integrantes do grupo, da seguinte forma:
+
+  /* Nome_do_Aluno1 Matricula Turma */
+  /* Nome_do_Aluno2 Matricula Turma */
+Lembre-se que este arquivo não deve conter a função main!
+um arquivo texto, chamado relatorio.txt, descrevendo os testes realizados, o que está funcionando e, eventualmente, o que não está funcionando. Mostre exemplos de estruturas testadas (casos de sucesso e insucesso, se houver)!
+
+Você não deve explicar a sua implementação neste relatório. Seu programa deve ser suficientemente claro e bem comentado.
+
+Coloque também no relatório o nome dos integrantes do grupo.
+
+Coloque na área de texto da tarefa do Moodle os nomes e turmas dos integrantes do grupo.
+Para grupos de alunos da mesma turma, apenas uma entrega é necessária (usando o login de um dos integrantes do grupo).
+
+Prazo
+O trabalho deve ser entregue até a meia-noite do dia 18/04.
+Trabalhos entregues com atraso perderão um ponto por dia de atraso.
+Observações
+Os trabalhos devem preferencialmente ser feitos em grupos de dois alunos.
+Alguns grupos poderão ser chamados para apresentações orais / demonstrações dos trabalhos entregues.
