@@ -1,6 +1,12 @@
+/********************************************************************************************/
+/* Função Code e Decode																		*/
+/* Aluno: Tássio Miranda																	*/
+/* Matrícula: 1321931																		*/
+/********************************************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 
 int code (char* desc, void* v, FILE* f)
 {
@@ -135,42 +141,276 @@ int code (char* desc, void* v, FILE* f)
 	return 0;
 }
 
-int decode (FILE *f)
+int decode (FILE *fs)
 {
-	char leitura;
-	int cnt_struct = 0; //contador de estruturas
-
-	if(f == NULL)
-	{
+	long leitura;
+	long variant1,variant2; // Como vou usar para ler um byte o tipo não faz diferença, poderia ser um char!
+	int cnt_struct = 1; //contador de estruturas
+	int cnt_bytes = 0;//contador de bytes 
+	leitura = 0;
+	if(fs == NULL){
 		printf("Erro na leitura do arquivo.\n");
 		return 1;
 	}
+	// ler o arquivo ate o final
 
-	while(!feof(f)) // ler o arquivo ate o final
-	{
-		fread(&leitura,1,1,f); 
 
-		if(leitura == 0xff)
-		{
-			printf("---------------------\nEstrutura %d",cnt_struct++);
-			fread(&leitura,1,1,f); // ler o proximo byte ja que o byte lido ja foi tratado
+	while(fread(&leitura,1,1,fs) == 1 ){
+		// Sair do while quando acabar o arquivo
+		if(feof(fs) != 0)
+			break;
+		// Começo de uma estrutura
+		if(leitura == 0xff) {
+			printf("\n---------------------\nEstrutura %d",cnt_struct++);
+			fread(&leitura,1,1,fs); // ler o proximo byte ja que o byte lido ja foi tratado
 		}
-		/*switch case talvez*/
-		else if(leitura == 0x81) // significa que é um int e não é o ultimo da struct
-		{
-			fread(&leitura,1,1,f); // ler o byte com o valor
-			/*realizar a conversão primeiro pegando os ...*/
+		// significa que é um int e não é o ultimo elemento da struct
+		if(leitura == 0x81){
+			printf("\n<int> ");
+			fread(&leitura,1,1,fs); // ler o byte com o valor
+			cnt_bytes=0;
+			//While de tratamento de valor do elemento, vamos sair dele quando chegarmos no proximo elemento
+			// certificar que ñ chegou no prox elemento
+			while(leitura != 0x81 || leitura != 0x82 || leitura != 0x01 || leitura != 0x02){
+				variant1 = leitura;
+				variant2 = 0x00;
+				// significa que o byte mais significativo é um e que existe mais um byte a ser tratado
+				if( (0x80&leitura) > 0 ) {
+					// vamos ler os valores ate chegar ao ultimo byte do valor
+
+					while(leitura){
+						if(leitura == 0x81 ||leitura == 0x82 || leitura == 0x01 || leitura == 0x02){
+							fseek(fs,-1,SEEK_CUR);
+							break;
+						}
+						variant1 = variant1 & 0x7F;
+						if(cnt_bytes>0)
+							variant1 = variant1 << (cnt_bytes*7);
+						variant2 = variant1 | variant2; // tirar o elemento mais significativo e adicionar os outros bits
+						fread(&leitura,1,1,fs);
+						variant1 = leitura;
+						cnt_bytes++;
+					}
+
+					//agora chegamos ao byte valor com zero em seu bit mais significativo
+					//variant2 = (variant1 & 0x7F) | variant2;					
+					 // numero impar ou seja ele é negativo
+					if((variant2%2)>0) {
+						 variant2 = variant2 >> 1;
+						 variant2 = ~variant2; 
+						 printf("%d",variant2);
+						 break;
+					}
+					 // numero par ou seja é positivo
+					else{
+						 variant2 = variant2 >> 1;
+						 printf("%d",variant2);
+						 break;
+					 }
+				}
+				// significa que o byte mais significativo é zero e é o ultimo elemento.
+				else {
+					//variant1 = variant1 & 0x7F; tirar o elemento mais significativo mas como ja é zero não importa.
+					 // numero impar ou seja ele é negativo
+					 if((variant1%2)>0){
+						 variant1 = variant1 >> 1;
+						 variant1 = ~variant1; 
+						 printf("%d",variant1);
+						 break;
+					 }
+					 // numero impar ou seja é positivo
+					 else {
+						 variant1 = variant1 >> 1;
+						 printf("%d",variant1);
+						 break;
+					 }
+					 // foi tratato o valor do elemento e agora vamos sair do while
+				}
+			}	
 		}
-		else if(leitura == 0x01)
-		{
+		// significa que é um int e é o ultimo elemento da struct
+		else if(leitura == 0x01){
+			printf("\n<int> ");
+			fread(&leitura,1,1,fs); // ler o byte com o valor
+			cnt_bytes=0;
+			// mesmo sabendo que é o ultimo elemento da struct mantive o mesmo while.
+			while(leitura != 0x81 || leitura != 0x82 || leitura != 0x01 || leitura != 0x02){
+				variant1 = leitura;
+				variant2 = 0x00;
+				// significa que o byte mais significativo é um e que existe mais um byte a ser tratado
+				if( (0x80&leitura) > 0 ) {
+					// vamos ler os valores ate chegar ao ultimo byte do valor
+					while(leitura){
+						if(leitura == 0x81 ||leitura == 0x82 || leitura == 0x01 || leitura == 0x02){
+							//fseek(fs,-1,SEEK_CUR);
+							break;
+						}
+						variant1 = variant1 & 0x7F;
+						if(cnt_bytes>0)
+							variant1 = variant1 << (cnt_bytes*7);
+						variant2 = variant1 | variant2; // tirar o elemento mais significativo e adicionar os outros bits
+						fread(&leitura,1,1,fs);
+						variant1 = leitura;
+						cnt_bytes++;
+					}
+					//agora chegamos ao byte valor com zero em seu bit mais significativo
+					variant2 = (variant1 & 0x7F) | variant2;					
+					 // numero impar ou seja ele é negativo
+					if((variant2%2)>0) {
+						 variant2 = variant2 >> 1;
+						 variant2 = ~variant2; 
+						 printf("%d",variant2);
+					}
+					 // numero par ou seja é positivo
+					else{
+						 variant2 = variant2 >> 1;
+						 printf("%d",variant2);
+					 }
+				}
+				// significa que o byte mais significativo é zero e é o ultimo elemento.
+				else {
+					//variant1 = variant1 & 0x7F; tirar o elemento mais significativo mas como ja é zero não importa.
+					 // numero impar ou seja ele é negativo
+					 if((variant1%2)>0){
+						 variant1 = variant1 >> 1;
+						 variant1 = ~variant1; 
+						 printf("%d",variant1);
+						 break;
+					 }
+					 // numero impar ou seja é positivo
+					 else{
+						 variant1 = variant1 >> 1;
+						 printf("%d",variant1);
+						 break;
+					 }
+					 // foi tratato o valor do elemento e agora vamos sair do while
+				}
+			}	
 		}
-		else if(leitura == 0x82)
-		{
+		// significa que é um long e não é o ultimo elemento da struct
+		else if(leitura == 0x82){
+			printf("\n<long> ");
+			fread(&leitura,1,1,fs); // ler o byte com o valor
+			cnt_bytes=0;
+			//While de tratamento de valor do elemento, vamos sair dele quando chegarmos no proximo elemento
+			// certificar que ñ chegou no prox elemento
+			while(leitura != 0x81 || leitura != 0x82 || leitura != 0x01 || leitura != 0x02){
+				variant1 = leitura;
+				variant2 = 0x00;
+				// significa que o bit mais significativo é um e que existe mais um byte a ser tratado
+				if( (0x80&leitura) > 0 ) {
+					// vamos ler os valores ate chegar ao ultimo byte do valor
+					while(leitura){
+						if(leitura == 0x81 ||leitura == 0x82 || leitura == 0x01 || leitura == 0x02){
+							fseek(fs,-1,SEEK_CUR);
+							break;
+						}
+						variant1 = variant1 & 0x7F;
+						if(cnt_bytes>0)
+							variant1 = variant1 << (cnt_bytes*7);
+						variant2 = variant1 | variant2; // tirar o elemento mais significativo e adicionar os outros bits
+						fread(&leitura,1,1,fs);
+						variant1 = leitura;
+						cnt_bytes++;
+					}
+					//agora chegamos ao byte valor com zero em seu bit mais significativo
+					//variant2 = (variant1 & 0x7F) | variant2;					
+					 // numero impar ou seja ele é negativo
+					if((variant2%2)>0) {
+						 variant2 = variant2 >> 1;
+						 variant2 = ~variant2; 
+						 printf("%d",variant2);
+						 break;
+					}
+					 // numero par ou seja é positivo
+					else{
+						 variant2 = variant2 >> 1;
+						 printf("%d",variant2);
+						 break;
+					 }
+					cnt_bytes=0;
+				}
+				// significa que o byte mais significativo é zero e é o ultimo elemento.
+				else {
+					//variant1 = variant1 & 0x7F; tirar o elemento mais significativo mas como ja é zero não importa.
+					 // numero impar ou seja ele é negativo
+					 if((variant1%2)>0){
+						 variant1 = variant1 >> 1;
+						 variant1 = ~variant1; 
+						 printf("%d",variant1);
+						 break;
+					 }
+					 // numero impar ou seja é positivo
+					 else {
+						 variant1 = variant1 >> 1;
+						 printf("%d",variant1);
+						 break;
+					 }
+					 // foi tratato o valor do elemento e agora vamos sair do while
+				}
+			}
 		}
-		else //leitura == 0x02
-		{
+		// // significa que é um long e é o ultimo elemento da struct
+		else{
+			printf("\n<long> ");
+			fread(&leitura,1,1,fs); // ler o byte com o valor
+			cnt_bytes=0;
+			//While de tratamento de valor do elemento, vamos sair dele quando chegarmos no proximo elemento
+			// certificar que ñ chegou no prox elemento
+			while(leitura != 0x81 || leitura != 0x82 || leitura != 0x01 || leitura != 0x02){
+				variant1 = leitura;
+				variant2 = 0x00;
+				// significa que o byte mais significativo é um e que existe mais um byte a ser tratado
+				if( (0x80&leitura) > 0 ) {
+					// vamos ler os valores ate chegar ao ultimo byte do valor
+					while(leitura){
+						if(leitura == 0x81 ||leitura == 0x82 || leitura == 0x01 || leitura == 0x02 || feof(fs)){
+							//fseek(fs,-1,SEEK_CUR);
+							break;
+						}
+						variant1 = variant1 & 0x7F;
+						if(cnt_bytes>0)
+							variant1 = variant1 << (cnt_bytes*7);
+						variant2 = variant1 | variant2; // tirar o elemento mais significativo e adicionar os outros bits
+						fread(&leitura,1,1,fs);
+						variant1 = leitura;
+						cnt_bytes++;
+					}
+					//agora chegamos ao byte valor com zero em seu bit mais significativo			
+					 // numero impar ou seja ele é negativo
+					if((variant2%2)>0) {
+						 variant2 = variant2 >> 1;
+						 variant2 = ~variant2; 
+						 printf("%d",variant2);
+						break;
+					}
+					 // numero par ou seja é positivo
+					else{
+						 variant2 = variant2 >> 1;
+						 printf("%d",variant2);
+						 break;
+					 }
+				}
+				// significa que o byte mais significativo é zero e é o ultimo elemento.
+				else {
+					//variant1 = variant1 & 0x7F; tirar o elemento mais significativo mas como ja é zero não importa.
+					 // numero impar ou seja ele é negativo
+					 if((variant1%2)>0){
+						 variant1 = variant1 >> 1;
+						 variant1 = ~variant1; 
+						 printf("%d",variant1);
+						 break;
+					 }
+					 // numero impar ou seja é positivo
+					 else {
+						 variant1 = variant1 >> 1;
+						 printf("%d",variant1);
+						 break;
+					 }
+					 // foi tratato o valor do elemento e agora vamos sair do while
+				}
+			}	
 		}
 	}
-
 	return 0;
 }
