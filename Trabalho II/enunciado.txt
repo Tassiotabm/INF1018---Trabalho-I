@@ -1,0 +1,169 @@
+INF1018 - Software Básico (2016.1)
+Segundo Trabalho
+
+Gerador de Código
+O objetivo deste trabalho é desenvolver, em C, uma função compila que implementa um pequeno gerador de código (um "micro-compilador") para uma linguagem de programação bastante simples, chamada SB.
+
+A função compila deverá ler um arquivo texto contendo o código fonte de uma função escrita em SB e retornar um ponteiro para o início da região de memória que contém o código de máquina que corresponde à tradução da função SB.
+
+Deve ser implementada também uma função libera, que libera a memória alocada para armazenar o código criado por compila.
+
+Leia com atenção o enunciado do trabalho e as instruções para a entrega. Em caso de dúvidas, não invente. Pergunte!
+A Linguagem SB
+
+A linguagem SB contém apenas três tipos de instruções: atribuição, desvio condicional e retorno.
+
+Uma atribuição tem a forma
+var '=' varpc op varpc
+onde var é uma variável local da função e varpc é uma variável local, um parâmetro ou uma constante inteira. op é um dos operadores: + - *
+As variáveis locais são da forma vi, sendo o índice i utilizado para identificar a variável (ex. v0, v1, etc...). Da mesma forma, os parâmetros são da forma pi, sendo p0 o primeiro parâmetro, p1 o segundo, e assim sucessivamente. A linguagem permite o uso de no máximo 20 variáveis locais e 3 parâmetros.
+
+Na linguagem SB as constantes são escritas na forma $i. Por exemplo, $10 representa o valor 10 e $-10 representa o valor -10.
+
+A instrução de desvio condicional tem a forma:
+'if' var n1 n2 n3
+onde var é uma variável local.
+Essa instrução, baseada no antigo if aritmético de FORTRAN, tem a seguinte semântica:
+
+se o valor de var é menor que 0, é realizado um desvio para a instrução da linha de número n1
+se o valor de var é igual a 0, é realizado um desvio para a instrução da linha de número n2
+se o valor de var é maior que 0, é realizado um desvio para a instrução da linha de número n3
+
+A instrução de retorno tem a forma:
+'ret' varpc
+Neste caso, a função deverá retornar e o valor de retorno é o valor de varpc (uma variável local, um parâmetro ou uma constante).
+A sintaxe da linguagem SB pode ser definida formalmente como abaixo:
+
+func	::=	cmd '\n' | cmd '\n' func
+cmd	::=	att | if | ret
+att	::=	var '=' varpc op varpc
+if	::=	'if' var num num num
+ret	::=	'ret' varpc
+var	::=	'v' num
+varpc	::=	var | 'p' num | '$' snum
+op	::=	'+' | '-' | '*'
+num	::=	digito | num digito
+snum	::=	[-] num
+digito	::=	0' | '1' | '2' | '3' | '4' | '5' | '6' | '7'| '8' | '9'
+
+Exemplos
+
+Veja a seguir alguns exemplos de funções SB.
+Atenção: os comentários não fazem parte da linguagem!
+
+Dois exemplos muito simples são: uma função que retorna uma constante
+ret $1  //1: retorna 1
+e uma função que retorna o seu primeiro parâmetro
+ret p0  //1: retorna primeiro parâmetro
+Um outro exemplo é a implementação da função f(a,b,c) = a * (b + c) na linguagem SB
+v0 = p1 + p2	//1: i = b + c
+v0 = p0 * v0	//2: i = a * i
+ret v0		//3: retorna i
+O próximo exemplo implementa uma função que retorna o maior de três parâmetros não negativos:
+v0 = p0 - p1	//1: v0 é menor que 0 se p0 < p1
+if v0 3 3 7 	//2: trata os 3 casos (p0 < p1, p0 = p1, p0 > p1)
+v0 = p1 - p2 	//3: v0 é menor que 0 se p1 < p2
+if v0 5 5 6 	//4: trata os 3 casos (p1 < p2, p1 = p2, p1 > p2)
+ret p2 		//5: p2 é o maior parâmetro
+ret p1 		//6: p1 é o maior parâmetro
+v0 = p0 - p2 	//7: v0 é menor que 0 se p0 < p2
+if v0 5 5 9 	//8: trata os 3 casos (p0 < p2, p0 = p2, p0 > p2)
+ret p0 		//9: p0 é o maior parâmetro
+O último implementa a função fatorial(n) em SB:
+v0 = $0 + $1   //1: f = 1
+v1 = p0 + $0   //2: n
+if v1 7 7 4    //3: if (n <= 0) goto 7
+v0 = v0 * v1   //4: f = f * n
+v1 = v1 - $1   //5: n = n - 1
+if v1 7 7 4    //6: if (n > 0) goto 4
+ret v0         //7: return f
+
+Implementação e Execução
+O que fazer
+
+Você deve desenvolver em C uma função chamada compila, que leia um arquivo de entrada contendo o código fonte de uma função na linguagem SB, gere o código de máquina correspondente, e retorne um valor do tipo "ponteiro para função"; este valor será o endereço da área de memória que contém o código gerado.
+O arquivo de entrada terá no máximo 50 linhas, com um comando SB por linha.
+
+O protótipo de compila é o seguinte:
+
+typedef int (*funcp) ();
+funcp compila (FILE *f);
+O único parâmetro de compila é o descritor de um arquivo texto já aberto para leitura, de onde deve ser lido o código fonte SB.
+Você deverá também desenvolver uma função que libere a área de memória alocada por compila, com o protótipo
+
+void libera (void *p);
+
+Implementação
+
+Para cada instrução SB imagine qual uma tradução possível para assembly. Além disso, lembre-se que a tradução de uma função SB deve começar com o prólogo usual (preparação do registro de ativação, incluindo o espaço para variáveis locais) e terminar com a finalização padrão (liberação do registro de ativação antes do retorno da função). O código gerado deverá seguir as convenções de C/Linux quanto à passagem de parâmetros, valor de retorno e salvamento de registradores.
+
+Para ler e interpretar cada linha da linguagem SB, teste se a linha contém cada um dos formatos possíveis. Veja um esboço de código C para fazer a interpretação de código aqui. Lembre-se que você terá que fazer adaptações pois, dentre outros detalhes, essa interpretação não será feita na main!
+
+O código gerado por compila deverá ser um código de máquina x86-64, e não um código fonte assembly. Ou seja, você deverá descobrir o código de máquina que corresponde às instruções de assembly que implementam a tradução das instruções da linguagem SB. Para isso, você pode usar o programa objdump e, se necessário, uma documentação das instruções da Intel.
+
+Por exemplo, para descobrir o código gerado por movl %eax, %ecx, você pode criar um arquivo meuteste.s contendo apenas essa instrução, traduzi-lo com o gcc (usando a opção -c) para gerar um arquivo objeto meuteste.o, e usar o comando
+
+objdump -d meuteste.o
+para ver o código de máquina gerado.
+A função compila deve alocar um bloco de memória para escrever o código gerado. O valor de retorno de compila será um ponteiro para essa área alocada. Lembre-se que as instruções de máquina ocupam um número variável de bytes na memória.
+
+Não é necessário fazer o tratamento de erros do arquivo de entrada, você pode supor que o código SB estará sempre correto. Vale a pena colocar alguns testes só para facilitar a própria depuração do seu código, mas as entradas usadas como testes na correção do trabalho sempre estarão corretas. 
+
+Estratégia de Implementação
+
+Este trabalho não é trivial. Implemente sua solução passo a passo, testando separadamente cada passo implementado!
+Por exemplo:
+
+Compile um arquivo assembly contendo uma função bem simples usando:
+minhamaquina> gcc -c code.s
+(para apenas compilar e não gerar o executável) e depois veja o código de máquina gerado usando:
+minhamaquina> objdump -d code.o
+Construa uma versão inicial da função compila, que aloque uma área de memória, coloque lá esse código "colado" do compilador, bem conhecido, e retorne o endereço da área alocada.
+Crie uma função main e teste essa versão inicial da função (leia o próximo item para ver como fazê-lo). Teste também a sua função de liberação de memória (chamada pela main!)
+
+Ainda sem começar a traduzir uma função SB lida de um arquivo, você pode implementar a "montagem" dinâmica de um código que contenha o prólogo e a finalização da função. Novamente, teste essa implementação.
+Comece agora a implementação de atribuições e operações aritméticas e da instrução de retorno. Pense em que informações você precisa extrair para poder traduzir as instruções (quais são os operandos, qual é a operação, onde armazenar o resultado da operação).
+Implemente e teste uma operação por vez. Experimente usar constantes, parâmetros, variáveis locais, e combinações desses tipos como operandos.
+
+Lembre-se que é necessário alocar espaço (na pilha) para as variáveis locais!
+
+Deixe para implementar a instrução if apenas quando todo o resto estiver funcionando!
+Pense em que informações você precisa guardar para traduzir completamente essa instrução (note que há desvios envolvidos nessa tradução.
+
+Testando o gerador de código
+
+Você deve criar um arquivo contendo as funções compila e libera e outro arquivo com uma função main para testá-la.
+
+Sua função main deverá abrir um arquivo texto que contém um "programa fonte" na linguagem SB (i.e, uma função SB) e chamar compila, passando o arquivo aberto como argumento. Em seguida, sua main deverá chamar a função retornada por compila, passando os parâmetros apropriados, e imprimir o valor de retorno dessa função (um valor inteiro). A função criada por compila é a tradução da função SB lida do arquivo de entrada.
+
+Não esqueça de compilar seu programa com
+
+gcc -Wall -Wa,--execstack -o seuprograma seuprograma.c
+
+para permitir a execução do código de máquina criado por compila!
+
+Uma sugestão para testar a chamada de uma função SB com diferentes parâmetros, é sua função main receber argumentos passados na linha de comando. Para ter acesso a esses argumentos (representados por strings), a sua função main deve ser declarada como
+
+int main(int argc, char *argv[])
+sendo argc o número de argumentos fornecidos na linha de comando e argv um array de ponteiros para strings (os argumentos).
+Note que o primeiro argumento para main (argv[0]) é sempre o nome do seu executável. Os parâmetros que deverão ser passados para a função criada por compila serão o argumento 1 em diante, convertidos para valores inteiros. Para fazer essa conversão você pode usar a função atoi. 
+
+Entrega
+Deverão ser entregues via Moodle dois arquivos:
+
+Um arquivo fonte chamado compila.c , contendo as funções compila e libera (e funções auxiliares, se for o caso).
+Esse arquivo não deve conter a função main.
+Coloque no início do arquivo, como comentário, os nomes dos integrantes do grupo da seguinte forma:
+/* Nome_do_Aluno1 Matricula Turma */
+/* Nome_do_Aluno2 Matricula Turma */
+Um arquivo texto, chamado relatorio.txt, contendo um pequeno relatório.
+O relatório deverá explicar o que está funcionando e o que não está funcionando. Não é necessário documentar sua função no relatório. Seu código deverá ser claro o suficiente para que isso não seja necessário.
+O relatório deverá conter também alguns exemplos de funções da linguagem SB que você usou para testar o seu trabalho. Mostre tanto as funções SB traduzidas e executadas com sucesso como as que resultaram em erros (se for o caso).
+Coloque também no relatório o nome dos integrantes do grupo
+Indique na área de texto da tarefa do Moodle o nome dos integrantes do grupo. Apenas uma entrega é necessária (usando o login de um dos integrantes do grupo) se os dois integrantes pertencerem à mesma turma.
+Prazo
+O trabalho deve ser entregue até meia-noite (24:00) do dia 10 de junho.
+Trabalhos entregues com atraso perderão um ponto por dia de atraso.
+Observações
+Os trabalhos devem preferencialmente ser feitos em grupos de dois alunos .
+Alguns grupos poderão ser chamados para apresentações orais / demonstrações dos trabalhos entregues.
