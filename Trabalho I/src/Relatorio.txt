@@ -1,0 +1,57 @@
+INF1018 - Trabalho I 
+
+		 Armazenamento de Estruturas de Inteiros  
+
+Aluno: Tássio Albuque Borges de Miranda
+Matrículoa: 1321931
+
+O desenvolvimento das funções foi realizada utilizando o Visual Studio 2010, junto com o Hex Editor Neo para ler arquivos binarios byte a byte.
+
+A função code e uncode foram testadas usando a main escrita no final desse relatório.
+
+Não foram encontrado problemas nos testes com visual studios e lendo os arquivos byte a byte pelo Hex Editor, os prints da função UNCODE também foram bem sucessedídas.
+
+POREM encontrei problemas na execução do programa no FEDORA, os longs estavam sendo lidos e impressos de forma contrária. Não consegui resolver esse erro na execução desse programa no Fedora, infelizmente.
+
+Os erros foram alem da impressão contrária no FEDORA foi a não impressão dos numeros muito grandes nos bytes de tipo long. Provavelmente ocorrências de padding não foram bem tratadas no Visual e acarretou nesses erros na execução no FEDORA.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include "code.h"
+
+struct AP{
+	int a;
+	int b;
+	long c;
+	long d;
+	//int c;
+	//long e;
+	//int f;
+	//long g;
+};
+
+int main (void)
+{
+	FILE * fp;
+	//FILE * fs;
+	int valor;
+	struct AP app;
+	app.a = 1;//10,11,0,21,23
+	app.b = -1;//-10,-11,0,-21,-23
+	app.c = 256;//1000,1100,0,2100,2300
+	app.d = -256;//-1000,-1100,0,-2100,-2300
+	fp= fopen("teste.txt","wb");
+	//fs= fopen("teste.txt","rb");
+	if(fp == NULL){
+		printf("Erro na leitura do arquivo.\n");
+		return 1;
+	}
+	valor = code("iill",&app,fp);
+	//valor = decode(fs);
+	//printf("Vamos passar em SB!\n");
+	//fscanf(fp,"%h",&valor);
+	printf("\nO valor do arquivo: %d\n",valor);
+	//fclose(fs);
+	fclose(fp);
+	return 0;
+}
