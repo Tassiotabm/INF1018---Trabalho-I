@@ -54,51 +54,46 @@ funcp compila (FILE *f)
 	 //variaveis
 	 int cont, valor, posicao_no_codigo = 0;
 	 char c, varpc;
-	 // vetores que contem a formatação típica de um arquivo assembly 
+	 // vetores que contem a formataÃ§Ã£o tÃ­pica de um arquivo assembly 
 	 unsigned char start[] = {0x55,0x48,0x89,0xe5};
-	 unsigned char end[] = {0x48,0x89,0xec,0x5d,0xc3};
+	 unsigned char end[] = {0xc9,0xc3};
 	 
+	printf("passou aq?3");
 	 // Devemos colocar no codigo do inicio do programa
 	 posicao_no_codigo = juntar_codigo(posicao_no_codigo,6,start,codigo);
 
-	 while(c=fgetc(f)!=EOF) // Mega While do Capeta
+	 while( (c=fgetc(f))!=EOF) // Mega While do Capeta
 	 {
 		 // Vamos pegar o primeiro caracter da linha para saber qual vai ser o comando e mandar depois um fscanf para 
 		 // pegar o varpc e o valor
 		 if(c == 'r')//retorno
 		 {
-			 fscanf(f,"et %c%d",varpc,valor); //Obter os o valor e o obter o que deve ser retornado
-
-			 if(varpc == '$')
-			 {
+			 fscanf(f,"et %c%d",&varpc,&valor); //Obter os o valor e o obter o que deve ser retornado
+			 printf("passou aq?");
+			 if(varpc == '$'){
 				 *( (int *) &codigo[posicao_no_codigo] ) = valor; // Visto em laboratorio 
 				 posicao_no_codigo = posicao_no_codigo+4; // Deslocar 4 bytes
 			 }
-			 else if(varpc == 'p')
-			 {
+			 else if(varpc == 'p'){
 				 // esse vai ser hard
 			 }
-			 else // Se for um var
-			 {
+			 else{// se for um var
 
 			 }
 		 }
-		 else if(c == 'i')
-		 {
+		 else if(c == 'i'){
 			char var;
 			int cnd1,cnd2,cnd3;
 
-			fscanf(f,"f %c%d %d %d %d",varpc,valor, &cnd1,&cnd2,&cnd3);
+			fscanf(f,"f %c%d %d %d %d",&varpc,&valor, &cnd1,&cnd2,&cnd3);
 	
-			if (var != '$') 
-				checkVar(var,valor,posicao_no_codigo);
+			if (varpc != '$') 
+				checkVar(varpc,valor,posicao_no_codigo);
 		 }
-		 else if(c == 'v')
-		 {
+		 else if(c == 'v'){
 
 		 }
-		 	unsigned char final[] = {0x89, 0xec, 0x5d, 0xc3};
-			posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,start,codigo);
+			posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,end,codigo);
 
 	 }
 
