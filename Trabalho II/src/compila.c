@@ -50,56 +50,36 @@ void checkVarP(char var, int idx, int line) {
 }
 funcp compila (FILE *f)
 {
-	 printf("p1");
-	//alocar o codigo
+	//alocar o array codigo
 	 unsigned char *codigo = (unsigned char*) malloc (800 * sizeof(unsigned char));
 	 //variaveis
-	 int valor, posicao_no_codigo = 0;
+	 int posicao_no_codigo = 0;
+	 long valor;
 	 char c, varpc;
 	 // vetores que contem a formatação típica de um arquivo assembly 
 	 unsigned char start[] = {0x55,0x48,0x89,0xe5};
 	 unsigned char end[] = {0xc9,0xc3};
+	 unsigned char movrax[] = {0x48,0xc7,0xc0}; 
 
-	 unsigned char ef[] = {0x55,0x48,0x89,0xe5,0xb8,0x01,0x00,0x00,0x00,0xc9,0xc3};   
-
+	 posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,start);
 	 
-	 // Devemos colocar no codigo do inicio do programa
-	 posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,start,codigo);
 
-	 while( (c=fgetc(f))!=EOF) // Mega While do Capeta
-	 {
-		 // Vamos pegar o primeiro caracter da linha para saber qual vai ser o comando e mandar depois um fscanf para 
-		 // pegar o varpc e o valor
-		 if(c == 'r')//retorno
-		 {
-			 fscanf(f,"et %c%d",&varpc,&valor); //Obter os o valor e o obter o que deve ser retornado
-			 if(varpc == '$'){
-				 posicao_no_codigo = juntar_codigo(posicao_no_codigo,1,(unsigned char *)0xb8,codigo);
-				 //*( (int *) &codigo[posicao_no_codigo] ) = valor; // Visto em laboratorio 
-				 codigo[posicao_no_codigo] = 0x01;
-				 codigo[posicao_no_codigo++] = 0x00;
-				 codigo[posicao_no_codigo++] = 0x00;
-				 codigo[posicao_no_codigo++] = 0x00;
-				 //posicao_no_codigo = posicao_no_codigo+4; // Deslocar 4 bytes
-			 }
-			 else if(varpc == 'p'){
-				 // esse vai ser hard
-			 }
-			 else{// se for um var
+	while( (c = fgetc(f)) != EOF ){
+		if( c == 'r'){ // retorno
+			fscanf(f,"et %c%ld",&varpc,&valor);
+			if(varpc == '$'){
+				posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,movrax);
+				 *( (long *) &codigo[posicao_no_codigo] ) = valor; 	
+				posicao_no_codigo = posicao_no_codigo+4;	// se colocar 8, q deveria ser o valor correto, da segment fault			
+			}
+		}
+		else if( c == 'v'){ // atribuicao
+			
+		}
+		else if( c == 'i'){ // if
+		}
+	}
 
-			 }
-		 }
-		 else if(c == 'i'){
-			int cnd1,cnd2,cnd3;
-
-			fscanf(f,"f %c%d %d %d %d",&varpc,&valor, &cnd1,&cnd2,&cnd3);
-	
-			if (varpc != '$') 
-				checkVar(varpc,valor,posicao_no_codigo);
-		 }
-		 else if(c == 'v'){
-		 }
-	 }
-	 posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,end,codigo);
+	posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,end);
 	 return (funcp)codigo;
 }
