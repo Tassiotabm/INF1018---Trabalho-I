@@ -50,33 +50,68 @@ void checkVarP(char var, int idx, int line) {
 }
 funcp compila (FILE *f)
 {
-	 printf("p1");
-	//alocar o codigo
+	//alocar o array codigo
 	 unsigned char *codigo = (unsigned char*) malloc (800 * sizeof(unsigned char));
 	 //variaveis
-	 int valor,posicao_no_codigo = 0;
+	 int posicao_no_codigo = 0;
+	 long valor;
 	 char c, varpc;
 	 // vetores que contem a formatação típica de um arquivo assembly 
-	 unsigned char start[] = {0x55,0x48,0x89,0xe5};
+	 unsigned char start[] = {0x55,0x48,0x89,0xe5,0x48,0x83,0xec,0x50};
 	 unsigned char end[] = {0xc9,0xc3};
-
-	 unsigned char ef[] = {0x01,0x00,0x00,0x00};   
+	 unsigned char movrax[] = {0x48,0xb8};
+	 unsigned char movrdirax[] = {0x48,0x89,0xf8};
+ 	 unsigned char movrsirax[] = {0x48,0x89,0xf0};
+	 unsigned char movrdxrax[] = {0x48,0x89,0xd0};
 
 	 posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,start);
 	 
-		
 
 	while( (c = fgetc(f)) != EOF ){
-		if( c == 'r'){
-			fscanf(f,"et %c%d",&varpc,&valor);
+		if( c == 'r'){ // retorno
+			fscanf(f,"et %c%ld",&varpc,&valor);
 			if(varpc == '$'){
-				codigo[posicao_no_codigo] = 0xb8; //mov $X,%eax
-				posicao_no_codigo++;
-				//posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,ef);
-				 *( (int *) &codigo[posicao_no_codigo] ) = valor; 	
-				posicao_no_codigo = posicao_no_codigo+4;				
+				posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,movrax);
+				 *( (long *) &codigo[posicao_no_codigo] ) = valor; 	
+				posicao_no_codigo = posicao_no_codigo+8;
+			}
+			else if( varpc == 'p'){
+				if(valor == 0)
+					posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,movrdirax);
+				else if(valor == 1)
+					posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,movrsirax);
+				else // valor == 3
+					posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,movrdxrax);
+			}
+			else if( varpc == 'v'){
+				if(valor > 20)
+					exit(1);
+				unsigned char alocar[] = {0x48,0x8b,0x45,0xfc};
+				alocar[3] = alocar[3]-(4*valor); 
+				posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,alocar);
 			}
 		}
+		/*else if( c == 'v'){ // atribuicao
+			int valor1,valor2;
+			char op,varp2;
+			fscanf(myfp, "%d = %c%d %c %c%d",&valor, &varpc, &valor1, &op, &varp2, &valor2);
+
+			if()
+			v0 = v1 + v2
+			p1 = p1 + p2
+
+
+		}*/
+		/*else if( c == 'i'){ // if
+
+			char var;
+ 			int cnd1,cnd2,cnd3;
+ 
+ 			fscanf(f,"f %c%d %d %d %d",varpc,valor, &cnd1,&cnd2,&cnd3);
+ 	
+ 			if (var != '$') 
+ 				checkVar(var,valor,posicao_no_codigo);
+		}*/ 
 	}
 
 	posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,end);
