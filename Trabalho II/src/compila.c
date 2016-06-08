@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#define MAX 800
 
 typedef int (*funcp) ();
 void libera (void *p);
@@ -49,18 +50,21 @@ void checkVarP(char var, int idx, int line) {
 }
 funcp compila (FILE *f)
 {
+	 printf("p1");
 	//alocar o codigo
-	 unsigned char *codigo = (unsigned char*) malloc (3200 * sizeof(unsigned char));
+	 unsigned char *codigo = (unsigned char*) malloc (800 * sizeof(unsigned char));
 	 //variaveis
-	 int cont, valor, posicao_no_codigo = 0;
+	 int valor, posicao_no_codigo = 0;
 	 char c, varpc;
 	 // vetores que contem a formatação típica de um arquivo assembly 
 	 unsigned char start[] = {0x55,0x48,0x89,0xe5};
 	 unsigned char end[] = {0xc9,0xc3};
+
+	 unsigned char ef[] = {0x55,0x48,0x89,0xe5,0xb8,0x01,0x00,0x00,0x00,0xc9,0xc3};   
+
 	 
-	printf("passou aq?3");
 	 // Devemos colocar no codigo do inicio do programa
-	 posicao_no_codigo = juntar_codigo(posicao_no_codigo,6,start,codigo);
+	 posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,start,codigo);
 
 	 while( (c=fgetc(f))!=EOF) // Mega While do Capeta
 	 {
@@ -69,10 +73,14 @@ funcp compila (FILE *f)
 		 if(c == 'r')//retorno
 		 {
 			 fscanf(f,"et %c%d",&varpc,&valor); //Obter os o valor e o obter o que deve ser retornado
-			 printf("passou aq?");
 			 if(varpc == '$'){
-				 *( (int *) &codigo[posicao_no_codigo] ) = valor; // Visto em laboratorio 
-				 posicao_no_codigo = posicao_no_codigo+4; // Deslocar 4 bytes
+				 posicao_no_codigo = juntar_codigo(posicao_no_codigo,1,(unsigned char *)0xb8,codigo);
+				 //*( (int *) &codigo[posicao_no_codigo] ) = valor; // Visto em laboratorio 
+				 codigo[posicao_no_codigo] = 0x01;
+				 codigo[posicao_no_codigo++] = 0x00;
+				 codigo[posicao_no_codigo++] = 0x00;
+				 codigo[posicao_no_codigo++] = 0x00;
+				 //posicao_no_codigo = posicao_no_codigo+4; // Deslocar 4 bytes
 			 }
 			 else if(varpc == 'p'){
 				 // esse vai ser hard
@@ -82,7 +90,6 @@ funcp compila (FILE *f)
 			 }
 		 }
 		 else if(c == 'i'){
-			char var;
 			int cnd1,cnd2,cnd3;
 
 			fscanf(f,"f %c%d %d %d %d",&varpc,&valor, &cnd1,&cnd2,&cnd3);
@@ -91,11 +98,8 @@ funcp compila (FILE *f)
 				checkVar(varpc,valor,posicao_no_codigo);
 		 }
 		 else if(c == 'v'){
-
 		 }
-			posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,end,codigo);
-
 	 }
-
+	 posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,end,codigo);
 	 return (funcp)codigo;
 }
