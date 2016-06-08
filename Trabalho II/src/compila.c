@@ -59,7 +59,11 @@ funcp compila (FILE *f)
 	 // vetores que contem a formatação típica de um arquivo assembly 
 	 unsigned char start[] = {0x55,0x48,0x89,0xe5};
 	 unsigned char end[] = {0xc9,0xc3};
-	 unsigned char movrax[] = {0x48,0xc7,0xc0}; 
+	 unsigned char movrax[] = {0x48,0xb8};
+	 unsigned char movrdirax[] = {0x48,0x89,0xf8};
+ 	 unsigned char movrsirax[] = {0x48,0x89,0xf0};
+	 unsigned char movrdxrax[] = {0x48,0x89,0xd0};
+
 
 	 posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,start);
 	 
@@ -68,15 +72,38 @@ funcp compila (FILE *f)
 		if( c == 'r'){ // retorno
 			fscanf(f,"et %c%ld",&varpc,&valor);
 			if(varpc == '$'){
-				posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,movrax);
+				posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,movrax);
 				 *( (long *) &codigo[posicao_no_codigo] ) = valor; 	
-				posicao_no_codigo = posicao_no_codigo+4;	// se colocar 8, q deveria ser o valor correto, da segment fault			
+				posicao_no_codigo = posicao_no_codigo+8;
+			}
+			else if( varpc == 'p'){
+				if(valor == 0)
+					posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,movrdirax);
+				else if(valor == 1)
+					posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,movrsirax);
+				else // valor == 3
+					posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,movrdxrax);
+			}
+			else if( varpc == 'v'){
+				// em construcao
 			}
 		}
 		else if( c == 'v'){ // atribuicao
-			
+			int valor1,valor2;
+			char op,varp2;
+			fscanf(myfp, "%d = %c%d %c %c%d",&valor, &varpc, &valor1, &op, &varp2, &valor2
+
+
 		}
 		else if( c == 'i'){ // if
+
+			char var;
+ 			int cnd1,cnd2,cnd3;
+ 
+ 			fscanf(f,"f %c%d %d %d %d",varpc,valor, &cnd1,&cnd2,&cnd3);
+ 	
+ 			if (var != '$') 
+ 				checkVar(var,valor,posicao_no_codigo);
 		}
 	}
 
