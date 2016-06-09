@@ -54,48 +54,76 @@ funcp compila (FILE *f)
 	 unsigned char *codigo = (unsigned char*) malloc (800 * sizeof(unsigned char));
 	 //variaveis
 	 int posicao_no_codigo = 0;
-	 long valor;
+	 int valor;
 	 char c, varpc;
 	 // vetores que contem a formatação típica de um arquivo assembly 
-	 unsigned char start[] = {0x55,0x48,0x89,0xe5};
+	 unsigned char start[] = {0x55,0x48,0x89,0xe5,0x48,0x83,0xec,0x50};
 	 unsigned char end[] = {0xc9,0xc3};
-	 unsigned char movrax[] = {0x48,0xb8};
-	 unsigned char movrdirax[] = {0x48,0x89,0xf8};
- 	 unsigned char movrsirax[] = {0x48,0x89,0xf0};
-	 unsigned char movrdxrax[] = {0x48,0x89,0xd0};
-
+	 unsigned char moveax[] = {0xb8};
+	 unsigned char movedieax[] = {0x89,0xf8};
+ 	 unsigned char movesieax[] = {0x89,0xf0};
+	 unsigned char movedxeax[] = {0x89,0xd0};
+	 unsigned char alocar[] = {0x8b,0x45,0xfc};
+	 unsigned char atribavar[] = {0xc7,0x45,0xfc}; // mover zero para -4(%ebp)
+	 unsigned char addvar[] = {0x83,0x45,0xfc};
 
 	 posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,start);
 	 
 
 	while( (c = fgetc(f)) != EOF ){
-		if( c == 'r'){ // retorno
-			fscanf(f,"et %c%ld",&varpc,&valor);
+		if( c == 'r'){ // retornar constante
+			fscanf(f,"et %c%d",&varpc,&valor);
 			if(varpc == '$'){
-				posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,movrax);
-				 *( (long *) &codigo[posicao_no_codigo] ) = valor; 	
-				posicao_no_codigo = posicao_no_codigo+8;
+				posicao_no_codigo = juntar_codigo(posicao_no_codigo,1,codigo,moveax);
+				 *( (int *) &codigo[posicao_no_codigo] ) = valor; 	
+				posicao_no_codigo = posicao_no_codigo+4;
 			}
-			else if( varpc == 'p'){
+			else if( varpc == 'p'){ // retornar um dos tres parametros
 				if(valor == 0)
-					posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,movrdirax);
+					posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,movedieax);
 				else if(valor == 1)
-					posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,movrsirax);
-				else // valor == 3
-					posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,movrdxrax);
+					posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,movesieax);
+				else // valor == 2
+					posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,movedxeax);
 			}
-			else if( varpc == 'v'){
-				// em construcao
+			else if( varpc == 'v'){ // retornar uma variavel local
+				if(valor > 20)
+					exit(1);
+				alocar[2] = alocar[2]-(4*valor); 
+				posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,alocar);
 			}
 		}
-		else if( c == 'v'){ // atribuicao
+		else if( c == 'v'){  // Atribuicao
 			int valor1,valor2;
-			char op,varp2;
-			fscanf(myfp, "%d = %c%d %c %c%d",&valor, &varpc, &valor1, &op, &varp2, &valor2
+			char op,varpc2;
+			/*Vamos primeiro tentar rodar com constantes*/
+			//por exemplo: v0 = p1 + p2
+			fscanf(f,"%d = %c%d %c %c%d",&valor, &varpc, &valor1, &op, &varpc2, &valor2);
+			//fscanf(f,"%d = %c%d",&valor,&varpc,&valor1);
+
+			if(varpc == '$'){
+				//colocar no codigo a variavel local correto
+				atribavar[2] = atribavar[2]-(4*valor); 
+				posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,atribavar);
+				//coolocar no codigo agora o valor a ser atribuido a variavel local
+				*( (int *) &codigo[posicao_no_codigo] ) = valor1; 	
+				posicao_no_codigo = posicao_no_codigo+4;
+				
+				//agora devemos saber qual vai ser o operador a ser usado
+				if(op == '+'){
+					if( op == '$'){
+						// vamos adicionar a constante na variavel local
+						addvar[2] = addvar[2]-(4*valor);
+						posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,addvar);
+						*( (int *) &codigo[posicao_no_codigo] ) = valor2; 	
+						posicao_no_codigo = posicao_no_codigo+4;
+					}		
+				}
+			}
 
 
 		}
-		else if( c == 'i'){ // if
+		/*else if( c == 'i'){ // if
 
 			char var;
  			int cnd1,cnd2,cnd3;
@@ -104,7 +132,7 @@ funcp compila (FILE *f)
  	
  			if (var != '$') 
  				checkVar(var,valor,posicao_no_codigo);
-		}
+		}*/ 
 	}
 
 	posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,end);
