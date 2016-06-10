@@ -93,7 +93,7 @@ funcp compila (FILE *f)
 			}
 		}
 		else if( c == 'v'){  // Atribuicao
-			printf("Quantas vezes\n");
+			//printf("Quantas vezes\n");
 			int valor1 = 0;
 			int valor2 = 0;
 			int valor = 0;
@@ -103,7 +103,7 @@ funcp compila (FILE *f)
 			fscanf(f,"%d = %c%d %c %c%d",&valor, &varpc, &valor1, &op, &varpc1, &valor2);
 			//fscanf(f,"%d = %c%d",&valor,&varpc,&valor1);
 
-			if(varpc == '$'){
+			if(varpc == '$'){ //constante 
 				//agora devemos saber qual vai ser o operador a ser usado
 				if(op == '+'){
 				//colocar no codigo a variavel local correto
@@ -113,7 +113,7 @@ funcp compila (FILE *f)
 				//coolocar no codigo agora o valor a ser atribuido a variavel local
 				*( (int *) &codigo[posicao_no_codigo] ) = valor1; 	
 				posicao_no_codigo = posicao_no_codigo+4;
-					if( varpc1 == '$'){
+					if( varpc1 == '$'){ //constante
 						// vamos adicionar a constante na variavel local
 						unsigned char addvar[] = {0x81,0x45,0xfc};
 						addvar[2] = addvar[2]-(4*valor);
@@ -121,10 +121,32 @@ funcp compila (FILE *f)
 						*( (int *) &codigo[posicao_no_codigo] ) = valor2; 
 						posicao_no_codigo = posicao_no_codigo+4;	
 					}
-					else if( varpc1 == 'v'){
+					else if( varpc1 == 'v'){ //var local
 					}
-					else if( varpc1 == 'p'){
-					}		
+					else if( varpc1 == 'p'){ //constante + parametro
+						if (valor2 == 0) {
+							unsigned char addvaredi[] = {0x81,0xc7,valor1};
+							posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,addvaredi);
+							unsigned char movedivar[] = {0x67, 0x89, 0x7d, 0xfc};
+							movedivar [3] = movedivar [3] - (4*valor);
+							posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movedivar);
+						}
+						else if (valor2 == 1) {
+							unsigned char addvaresi[] = {0x81,0xc6,valor1};
+							posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,addvaresi);
+							unsigned char movesivar[] = {0x67, 0x89, 0x75, 0xfc};
+							movesivar [3] = movesivar [3] - (4*valor);
+							posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movesivar);
+						}
+
+						else if(valor2 ==2) { //constante + edx
+							unsigned char addvaredx[] = {0x81,0xc2,valor1};
+							posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,addvaredx);
+							unsigned char movedxvar[] = {0x67, 0x89, 0x55, 0xfc};
+							movedxvar [3] = movedxvar [3] - (4*valor);
+							posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movedxvar);
+						}					
+					}//fim constante + parametro		
 				}
 				if(op == '-'){
 				//colocar no codigo a variavel local correto
@@ -134,7 +156,7 @@ funcp compila (FILE *f)
 				//coolocar no codigo agora o valor a ser atribuido a variavel local
 				*( (int *) &codigo[posicao_no_codigo] ) = valor1; 	
 				posicao_no_codigo = posicao_no_codigo+4;
-					if(varpc1 == '$'){
+					if(varpc1 == '$'){ //constante
 					     // vamos subtrair a constante a variavel local
 						unsigned char subvar[] = {0x81,0x6d,0xfc};
 						subvar[2] = subvar[2]-(4*valor);
@@ -149,7 +171,7 @@ funcp compila (FILE *f)
 				//coolocar no codigo agora o valor a ser atribuido a variavel local
 				*( (int *) &codigo[posicao_no_codigo] ) = valor1; 	
 				posicao_no_codigo = posicao_no_codigo+4;
-					if(varpc1 == '$'){
+					if(varpc1 == '$'){ //constante
 					// vamos multiplicar o r10d pela constante
 						unsigned char imulvar[] = {0x69,0xc9};
 						posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,imulvar);
@@ -161,6 +183,115 @@ funcp compila (FILE *f)
 						posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,imulatribvar);
 					}
 				}
+			}
+			else if (varpc == 'p') {
+				if (op == '+') {
+					if (varpc1 == 'p') { //parametro + parametro
+						if (valor1 == 0) {
+							if (valor2 == 0) { // addl %edi, %edi
+								unsigned char addediedi[] = {0x01,0xff};
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,addediedi);
+								unsigned char movvar[] = {0x67, 0x89, 0x7d, 0xfc};
+								movvar [3] = movvar[3] - (4*valor);
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movvar);
+							}
+
+							else if (valor2 == 1) { // addl %edi, %esi
+								unsigned char addediesi[] = { 0x01, 0xfe };
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,addediesi);
+								unsigned char movvar[] = { 0x67, 0x89, 0x75, 0xfc };
+								movvar [3] = movvar [3] - (4*valor);
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movvar);
+							}
+					
+							else if (valor2 == 2) { //addl %edi, %edx
+								unsigned char addediedx[] = { 0x01, 0xfa };
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,addediedx);
+								unsigned char movvar[] = { 0x67, 0x89, 0x55, 0xfc };
+								movvar [3] = movvar [3] - (4*valor);
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movvar);
+							}
+						} // fim if valor1 == 0
+						else if (valor1 == 1) {
+							if (valor2 == 0) { // addl %esi, %edi
+								unsigned char addesiedi[] = {0x01,0xf7};
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,addesiedi);
+								unsigned char movvar[] = {0x67, 0x89, 0x7d, 0xfc};
+								movvar [3] = movvar[3] - (4*valor);
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movvar);
+							}
+
+								else if (valor2 == 1) { // addl %esi, %esi
+								unsigned char addesiesi[] = { 0x01, 0xf6 };
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,addesiesi);
+								unsigned char movvar[] = { 0x67, 0x89, 0x75, 0xfc };
+								movvar [3] = movvar [3] - (4*valor);
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movvar);
+							}
+					
+								else if (valor2 == 2) { //addl %esi, %edx
+								unsigned char addesiedx[] = { 0x01, 0xf2 };
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,addesiedx);
+								unsigned char movvar[] = { 0x67, 0x89, 0x55, 0xfc };
+								movvar [3] = movvar [3] - (4*valor);
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movvar);
+							}
+						}// fim if valor1 == 1
+						
+						else if (valor1 == 2) {
+							if (valor2 == 0) { // addl %edx, %edi
+								unsigned char addedxedi[] = {0x01,0xd7};
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,addedxedi);
+								unsigned char movvar[] = {0x67, 0x89, 0x7d, 0xfc};
+								movvar [3] = movvar[3] - (4*valor);
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movvar);
+							}
+
+								else if (valor2 == 1) { // addl %edx, %esi
+								unsigned char addedxesi[] = { 0x01, 0xd6 };
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,addedxesi);
+								unsigned char movvar[] = { 0x67, 0x89, 0x75, 0xfc };
+								movvar [3] = movvar [3] - (4*valor);
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movvar);
+							}
+					
+								else if (valor2 == 2) { //addl %edx, %edx
+								unsigned char addedxedx[] = { 0x01, 0xd2 };
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,addedxedx);
+								unsigned char movvar[] = { 0x67, 0x89, 0x55, 0xfc };
+								movvar [3] = movvar [3] - (4*valor);
+								posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movvar);
+							}
+						}// fim if valor1 == 2
+					}//fim parametro + parametro
+
+					else if (varpc1 == '$') {
+						if (valor2 == 0) {
+							unsigned char addvaredi[] = {0x81,0xc7,valor1};
+							posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,addvaredi);
+							unsigned char movedivar[] = {0x67, 0x89, 0x7d, 0xfc};
+							movedivar [3] = movedivar [3] - (4*valor);
+							posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movedivar);
+						}
+						else if (valor2 == 1) {
+							unsigned char addvaresi[] = {0x81,0xc6,valor1};
+							posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,addvaresi);
+							unsigned char movesivar[] = {0x67, 0x89, 0x75, 0xfc};
+							movesivar [3] = movesivar [3] - (4*valor);
+							posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movesivar);
+						}
+
+						else if(valor2 ==2) { //constante + edx
+							unsigned char addvaredx[] = {0x81,0xc2,valor1};
+							posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,addvaredx);
+							unsigned char movedxvar[] = {0x67, 0x89, 0x55, 0xfc};
+							movedxvar [3] = movedxvar [3] - (4*valor);
+							posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,movedxvar);
+						}
+					}//fim parametro + constante
+					else if (varpc1 == 'v') {
+					}//fim parametro + var local
+				}// fim if op == +
 			}
 		}
 		/*else if( c == 'i'){ // if
@@ -180,3 +311,4 @@ funcp compila (FILE *f)
 		printf("0x%x -- %d\n",codigo[i],i);
 	 return (funcp)codigo;
 }
+
