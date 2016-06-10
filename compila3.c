@@ -85,7 +85,9 @@ funcp compila (FILE *f)
 					exit(1);
 				unsigned char alocar[] = {0x8b,0x45,0xfc};
 				alocar[2] = alocar[2]-(4*valor); 
-				posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,alocar);}
+				posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,alocar);
+			}
+			//break;
 		}
 		else if( c == 'v'){  // Atribuicao
 			printf("Quantas vezes\n");
@@ -469,23 +471,36 @@ funcp compila (FILE *f)
 				}
 
 			}
-		/*else if( c == 'i'){ // if
+		else if( c == 'i'){ // if
 
 			//	cmpl: 83 (comparador) (constante)
-			//	je: 74 (somatorio das linhas) -------> somatorio de linhas é posicao_no_codigo + num_array_instrucao_atual + valor
+			//	je: 74 (somatorio das linhas)
 			//	ja: 77 (somatorio das linhas)
 			//	jb: 72 (somatorio das linhas)
-			//	jmp: 
+			//	jmp: eb (somatorio das linhas)
+			//	somatorio de linhas: posicao_no_codigo + num_array_instrucao_atual + valor
+			//	[] = {cod, (cnd2-posicao_no_codigo-2)};
+			//	cmpl	v(n) com $0
 
-			char var;
- 			int cnd1,cnd2,cnd3;
+			//	cnd1: jb / cnd2: je / cnd3: ja
+
+			int cnd1,cnd2,cnd3;
  
- 			fscanf(f,"f %c%d %d %d %d",varpc,valor, &cnd1,&cnd2,&cnd3);
- 	
- 			if (var != '$') 
- 				checkVar(var,valor,posicao_no_codigo);
-		}*/ 
+ 			fscanf(f,"f %c%d %d %d %d",&varpc,&valor, &cnd1,&cnd2,&cnd3);
+ 			//    	,"   v(n) cnd1, cnd2, cn3"
+			
+			unsigned char cmp [] = { 0x83, 0x7d, (0xfc-(4*valor)), 0x00};
+			unsigned char jb [] = { 0x72, (cnd1-posicao_no_codigo-2) };
+			unsigned char je [] = { 0x74, (cnd2-posicao_no_codigo-2) };
+			unsigned char ja [] = { 0x77, (cnd3-posicao_no_codigo-2) };
+
+			posicao_no_codigo = juntar_codigo(posicao_no_codigo, 4, codigo, cmp);
+			posicao_no_codigo = juntar_codigo(posicao_no_codigo, 2, codigo, jb);
+			posicao_no_codigo = juntar_codigo(posicao_no_codigo, 2, codigo, je);
+			posicao_no_codigo = juntar_codigo(posicao_no_codigo, 2, codigo, ja);
 		}
+		} 
+
 	}
 	posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,end);
 	for(int i=0;i<posicao_no_codigo;i++)
