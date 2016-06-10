@@ -54,7 +54,7 @@ funcp compila (FILE *f)
 	 unsigned char *codigo = (unsigned char*) malloc (800 * sizeof(unsigned char));
 	 //variaveis
 	 int posicao_no_codigo = 0;
-	 int valor;
+	 int valor = 0;
 	 char c, varpc;
 	 // vetores que contem a formatação típica de um arquivo assembly 
 	 unsigned char start[] = {0x55,0x48,0x89,0xe5,0x48,0x83,0xec,0x50};
@@ -63,14 +63,12 @@ funcp compila (FILE *f)
 	 unsigned char movedieax[] = {0x89,0xf8};
  	 unsigned char movesieax[] = {0x89,0xf0};
 	 unsigned char movedxeax[] = {0x89,0xd0};
-	 unsigned char alocar[] = {0x8b,0x45,0xfc};
-	 unsigned char atribavar[] = {0xc7,0x45,0xfc}; // mover zero para -4(%ebp)
-	 unsigned char addvar[] = {0x83,0x45,0xfc};
 
-	 posicao_no_codigo = juntar_codigo(posicao_no_codigo,4,codigo,start);
+	 posicao_no_codigo = juntar_codigo(posicao_no_codigo,8,codigo,start);
 	 
 
-	while( (c = fgetc(f)) != EOF ){
+	 while( (c = fgetc(f)) != EOF ){
+		
 		if( c == 'r'){ // retornar constante
 			fscanf(f,"et %c%d",&varpc,&valor);
 			if(varpc == '$'){
@@ -89,39 +87,81 @@ funcp compila (FILE *f)
 			else if( varpc == 'v'){ // retornar uma variavel local
 				if(valor > 20)
 					exit(1);
+				unsigned char alocar[] = {0x8b,0x45,0xfc};
 				alocar[2] = alocar[2]-(4*valor); 
 				posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,alocar);
 			}
 		}
 		else if( c == 'v'){  // Atribuicao
-			int valor1,valor2;
-			char op,varpc2;
+			printf("Quantas vezes\n");
+			int valor1 = 0;
+			int valor2 = 0;
+			int valor = 0;
+			char op,varpc1;
 			/*Vamos primeiro tentar rodar com constantes*/
 			//por exemplo: v0 = p1 + p2
-			fscanf(f,"%d = %c%d %c %c%d",&valor, &varpc, &valor1, &op, &varpc2, &valor2);
+			fscanf(f,"%d = %c%d %c %c%d",&valor, &varpc, &valor1, &op, &varpc1, &valor2);
 			//fscanf(f,"%d = %c%d",&valor,&varpc,&valor1);
 
 			if(varpc == '$'){
+				//agora devemos saber qual vai ser o operador a ser usado
+				if(op == '+'){
 				//colocar no codigo a variavel local correto
-				atribavar[2] = atribavar[2]-(4*valor); 
+	 			unsigned char atribavar[] = {0xc7,0x45,0xfc};
+				atribavar[2] = atribavar[2]- (4*valor); 
 				posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,atribavar);
 				//coolocar no codigo agora o valor a ser atribuido a variavel local
 				*( (int *) &codigo[posicao_no_codigo] ) = valor1; 	
 				posicao_no_codigo = posicao_no_codigo+4;
-				
-				//agora devemos saber qual vai ser o operador a ser usado
-				if(op == '+'){
-					if( op == '$'){
+					if( varpc1 == '$'){
 						// vamos adicionar a constante na variavel local
+						unsigned char addvar[] = {0x81,0x45,0xfc};
 						addvar[2] = addvar[2]-(4*valor);
 						posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,addvar);
-						*( (int *) &codigo[posicao_no_codigo] ) = valor2; 	
-						posicao_no_codigo = posicao_no_codigo+4;
+						*( (int *) &codigo[posicao_no_codigo] ) = valor2; 
+						posicao_no_codigo = posicao_no_codigo+4;	
+					}
+					else if( varpc1 == 'v'){
+					}
+					else if( varpc1 == 'p'){
 					}		
 				}
+				if(op == '-'){
+				//colocar no codigo a variavel local correto
+	 			unsigned char atribavar[] = {0xc7,0x45,0xfc};
+				atribavar[2] = atribavar[2]- (4*valor); 
+				posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,atribavar);
+				//coolocar no codigo agora o valor a ser atribuido a variavel local
+				*( (int *) &codigo[posicao_no_codigo] ) = valor1; 	
+				posicao_no_codigo = posicao_no_codigo+4;
+					if(varpc1 == '$'){
+					     // vamos subtrair a constante a variavel local
+						unsigned char subvar[] = {0x81,0x6d,0xfc};
+						subvar[2] = subvar[2]-(4*valor);
+						posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,subvar);
+						*( (int *) &codigo[posicao_no_codigo] ) = valor2; 
+						posicao_no_codigo = posicao_no_codigo+4;
+					}
+				}
+				if(op == '*'){
+				unsigned char atribvarmult[] = {0xb9}; // mover para %ecx
+				posicao_no_codigo = juntar_codigo(posicao_no_codigo,1,codigo,atribvarmult);
+				//coolocar no codigo agora o valor a ser atribuido a variavel local
+				*( (int *) &codigo[posicao_no_codigo] ) = valor1; 	
+				posicao_no_codigo = posicao_no_codigo+4;
+					if(varpc1 == '$'){
+					// vamos multiplicar o r10d pela constante
+						unsigned char imulvar[] = {0x69,0xc9};
+						posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,imulvar);
+						*( (int *) &codigo[posicao_no_codigo] ) = valor2; 
+						posicao_no_codigo = posicao_no_codigo+4;
+					// agora vamos fazer o mov de rd10 para a variavel local
+						unsigned char imulatribvar[] = {0x89,0x4d,0xfc};
+						imulatribvar[2] = imulatribvar[2]-(4*valor);   
+						posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,imulatribvar);
+					}
+				}
 			}
-
-
 		}
 		/*else if( c == 'i'){ // if
 
@@ -136,5 +176,7 @@ funcp compila (FILE *f)
 	}
 
 	posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,end);
+	for(int i=0;i<posicao_no_codigo;i++)
+		printf("0x%x -- %d\n",codigo[i],i);
 	 return (funcp)codigo;
 }
