@@ -87,10 +87,10 @@ funcp compila (FILE *f)
 				alocar[2] = alocar[2]-(4*valor); 
 				posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,alocar);
 			}
-			//break;
+			posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,end);
 		}
 		else if( c == 'v'){  // Atribuicao
-			printf("Quantas vezes\n");
+			//printf("Quantas vezes\n");
 			int valor1 = 0;
 			int valor2 = 0;
 			int valor = 0;
@@ -469,8 +469,8 @@ funcp compila (FILE *f)
 						posicao_no_codigo = juntar_codigo(posicao_no_codigo,3,codigo,movvar);
 					}
 				}
-
 			}
+		}
 		else if( c == 'i'){ // if
 
 			//	cmpl: 83 (comparador) (constante)
@@ -489,22 +489,24 @@ funcp compila (FILE *f)
  			fscanf(f,"f %c%d %d %d %d",&varpc,&valor, &cnd1,&cnd2,&cnd3);
  			//    	,"   v(n) cnd1, cnd2, cn3"
 			
-			unsigned char cmp [] = { 0x83, 0x7d, (0xfc-(4*valor)), 0x00};
-			unsigned char jb [] = { 0x72, (cnd1-posicao_no_codigo-2) };
-			unsigned char je [] = { 0x74, (cnd2-posicao_no_codigo-2) };
-			unsigned char ja [] = { 0x77, (cnd3-posicao_no_codigo-2) };
 
+			printf("entrei no if\n");
+			unsigned char cmp [] = { 0x83, 0x7d, (0xfc-(4*valor)), 0x00};
 			posicao_no_codigo = juntar_codigo(posicao_no_codigo, 4, codigo, cmp);
+			printf("cmp_posicao_codigo: %d", posicao_no_codigo);
+			unsigned char jb [] = { 0x72, (cnd1-posicao_no_codigo-2) };
 			posicao_no_codigo = juntar_codigo(posicao_no_codigo, 2, codigo, jb);
+			printf("jb_posicao_codigo: %d", posicao_no_codigo);
+			unsigned char je [] = { 0x74, (cnd2-posicao_no_codigo-2) };
 			posicao_no_codigo = juntar_codigo(posicao_no_codigo, 2, codigo, je);
+			printf("je_posicao_codigo: %d", posicao_no_codigo);
+			unsigned char ja [] = { 0x77, (cnd3-posicao_no_codigo-2) };
 			posicao_no_codigo = juntar_codigo(posicao_no_codigo, 2, codigo, ja);
-		}
+			printf("ja_posicao_codigo: %d", posicao_no_codigo);
 		} 
 
 	}
-	posicao_no_codigo = juntar_codigo(posicao_no_codigo,2,codigo,end);
 	for(int i=0;i<posicao_no_codigo;i++)
 		printf("0x%x -- %d\n",codigo[i],i);
 	 return (funcp)codigo;
 }
-
